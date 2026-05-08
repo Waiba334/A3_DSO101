@@ -1,0 +1,79 @@
+pipeline {
+    agent any
+    tools {
+        nodejs 'NodeJS'
+    }
+    environment {
+        DOCKERHUB_USER = 'bishalwaiba'
+        IMAGE_TAG = '02240335'
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Install Backend') {
+            steps {
+                dir('todo-app/backend') {
+                    sh 'npm install'
+                }
+            }
+        }
+        stage('Test Backend') {
+            steps {
+                dir('todo-app/backend') {
+                    sh 'npm install'
+                    sh 'npm test -- --reporters jest-junit'
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true,
+                          testResults: 'todo-app/backend/junit.xml'
+                }
+            }
+        }
+        stage('Install Frontend') {
+            steps {
+                dir('todo-app/frontend') {
+                    sh 'npm install'
+                }
+            }
+        }
+        stage('Build Frontend') {
+            steps {
+                dir('todo-app/frontend') {
+                    sh 'npm run build'
+                }
+            }
+        }
+        stage('Build & Push Docker Images') {
+    steps {
+        script {
+            withCredentials([usernamePassword(
+                credentialsId: 'docker-hub-creds',
+                usernameVariable: 'DOCKER_USER',
+                passwordVariable: 'DOCKER_PASS'
+            )]) {
+                sh '''
+                    echo $DOCKER_PASS | /usr/local/bin/docker login -u $DOCKER_USER --password-stdin
+                    /usr/local/bin/docker build -t bishalwaiba/be-todo:02240335 ./todo-app/backend
+                    /usr/local/bin/docker push bishalwaiba/be-todo:02240335
+                    /usr/local/bin/docker build -t bishalwaiba/fe-todo:latest ./todo-app/frontend
+                    /usr/local/bin/docker push bishalwaiba/fe-todo:latest
+                '''
+            }
+        }
+    }
+}
+    }
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs above.'
+        }
+    }
+}
