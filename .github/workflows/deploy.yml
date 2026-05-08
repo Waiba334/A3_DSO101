@@ -52,3 +52,8 @@ jobs:
       - name: Trigger Render Deployment
         run: |
           curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_BE }}
+
+      # 9. Deploy Frontend to Render.com
+      - name: Trigger Frontend Render Deployment
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_FE }}
