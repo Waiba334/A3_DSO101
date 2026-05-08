@@ -1,0 +1,54 @@
+name: Build, Test and Deploy
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. Install backend dependencies
+      - name: Install Backend Dependencies
+        working-directory: ./todo-app/backend
+        run: npm install
+
+      # 4. Run backend tests
+      - name: Run Backend Tests
+        working-directory: ./todo-app/backend
+        run: npm test
+
+      # 5. Login to DockerHub
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 6. Build and Push Backend Docker Image
+      - name: Build and Push Backend Image
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/be-todo:latest ./todo-app/backend
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/be-todo:latest
+
+      # 7. Build and Push Frontend Docker Image
+      - name: Build and Push Frontend Image
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/fe-todo:latest ./todo-app/frontend
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/fe-todo:latest
+
+      # 8. Deploy to Render.com
+      - name: Trigger Render Deployment
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_BE }}
